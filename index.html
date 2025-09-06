@@ -1,153 +1,208 @@
 <!DOCTYPE html>
-<html lang="fa">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>۵S Inventory – ثبت موجودی</title>
-  <!-- PWA -->
+  <title>5S Inventory – Count</title>
+
+  <!-- PWA setup -->
   <link rel="manifest" href="./manifest.webmanifest" />
   <meta name="theme-color" content="#2a7a2e" />
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; background: #f5f5f5; direction: rtl;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      color: #222; text-align: center;
-    }
-    header { background:#2a7a2e; color:#fff; padding:14px 16px; font-weight:600; }
-    #progress { max-width: 520px; width: 90%; margin: 10px auto 0; height: 6px; background:#e0e0e0; border-radius: 999px; overflow: hidden; }
-    #progressBar { width: 0; height: 100%; background:#2a7a2e; }
 
-    #card {
-      max-width: 520px; width: 90%; margin: 14px auto; background:#fff;
-      border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.08); overflow: hidden;
+  <style>
+    /* Reset and layout */
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f5f5f5; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #0f172a; }
+    header { background: #2a7a2e; color: #fff; padding: 14px 16px; position: sticky; top: 0; z-index: 10; }
+    header h1 { margin: 0; font-size: 20px; font-weight: 700; }
+    .progress-wrap { height: 6px; background: rgba(255,255,255,0.25); border-radius: 99px; margin-top: 10px; overflow: hidden; }
+    .progress { height: 100%; width: 0%; background: #fff; transition: width .25s ease; }
+
+    main { padding: 16px; max-width: 780px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 14px; box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.1); padding: 16px; }
+
+    .image { width: 100%; aspect-ratio: 16/9; display: grid; place-items: center; background: #e6f0ff; color: #1557b0; border-radius: 12px; overflow: hidden; }
+    .image img { width: 100%; height: 100%; object-fit: cover; }
+
+    dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 16px 0; }
+    dt { color: #111827; font-weight: 700; }
+    dd { margin: 0; color: #374151; }
+
+    .qty { margin-top: 10px; }
+    input[type="number"] {
+      width: 100%; padding: 14px 16px; font-size: 18px; border: 1px solid #d1d5db; border-radius: 12px; outline: none;
     }
-    #card img { width: 100%; height: 220px; object-fit: cover; background:#ddd; }
-    #details { text-align: right; padding: 10px 14px; line-height: 1.6; }
-    #details strong { font-weight: 700; }
-    #qtyInput { width: 100%; padding: .7rem; margin: .6rem 0; border: 1px solid #d0d0d0; border-radius: 8px; text-align: center; font-size: 1.05rem; }
-    #saveBtn { width: 100%; background:#2a7a2e; color:#fff; border:none; border-radius: 8px; padding: .9rem; font-size:1.05rem; cursor:pointer; }
-    #saveBtn:disabled { opacity:.6; cursor:not-allowed; }
-    footer { color:#666; font-size:.88rem; margin: 10px 0 24px; }
-    #toast {
-      position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px;
-      background:#2a7a2e; color:#fff; padding:10px 14px; border-radius:999px; display:none;
+    input[type="number"]:focus { border-color: #2a7a2e; box-shadow: 0 0 0 3px rgba(42,122,46,.15); }
+
+    .btn {
+      width: 100%; margin-top: 12px; padding: 14px 16px; font-size: 18px; font-weight: 700;
+      background: #2a7a2e; color: #fff; border: 0; border-radius: 12px; cursor: pointer;
     }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+
+    .meta { text-align: center; color: #6b7280; margin-top: 16px; }
+    .error { background: #fff7ed; color: #b45309; border: 1px solid #fed7aa; padding: 12px; border-radius: 10px; }
+
+    .topbar { display: flex; align-items: center; gap: 8px; }
+    .spacer { flex: 1; }
+    .pill { background: rgba(255,255,255,.2); padding: 2px 8px; border-radius: 999px; font-size: 12px; }
   </style>
 </head>
 <body>
-  <header>۵S Inventory</header>
-  <div id="progress"><div id="progressBar"></div></div>
-
-  <div id="card">
-    <img id="productImage" src="./icon-512.png" alt="تصویر محصول" />
-    <div id="details"></div>
-    <div style="padding: 0 14px 14px;">
-      <input id="qtyInput" inputmode="numeric" placeholder="موجودی را وارد کنید" />
-      <button id="saveBtn">ذخیره و بعدی</button>
+  <header>
+    <div class="topbar">
+      <h1>5S Inventory</h1>
+      <div class="spacer"></div>
+      <span class="pill" id="progressText">Item 0 of 0</span>
     </div>
-  </div>
+    <div class="progress-wrap"><div class="progress" id="progressBar"></div></div>
+  </header>
 
-  <footer id="footer"></footer>
-  <div id="toast">ثبت شد</div>
+  <main>
+    <div class="card">
+      <div class="image" id="imageWrap" aria-label="Item image">
+        <img id="image" alt="Item image" hidden />
+        <!-- Placeholder graphic for missing images -->
+        <svg id="placeholder" width="140" height="90" viewBox="0 0 140 90" aria-hidden="true">
+          <rect width="140" height="90" fill="#e6f0ff" />
+          <text x="50%" y="55%" text-anchor="middle" font-size="40" fill="#1557b0" font-family="Arial, sans-serif">5S</text>
+        </svg>
+      </div>
+
+      <dl id="details">
+        <!-- Product details will be injected here -->
+      </dl>
+
+      <div class="qty">
+        <label for="qtyInput" class="sr-only">Quantity</label>
+        <input id="qtyInput" type="number" inputmode="numeric" min="0" step="1" placeholder="Enter quantity" />
+      </div>
+
+      <button id="saveBtn" class="btn">Save & Next</button>
+      <p class="meta" id="metaText"></p>
+      <div id="errorBox" class="error" hidden></div>
+    </div>
+  </main>
 
   <script>
-    // Simple toast
-    function toast(msg) {
-      const t = document.getElementById('toast');
-      t.textContent = msg || 'ثبت شد';
-      t.style.display = 'block';
-      clearTimeout(t.__timer); t.__timer = setTimeout(()=>t.style.display='none', 1200);
-    }
+    // Data version used for cache-busting. Bump when data.json changes.
+    const DATA_VERSION = 'v5';
 
-    // Local storage helpers
-    function loadQuantities() {
-      try { return JSON.parse(localStorage.getItem('inventoryQuantities')) || {}; }
-      catch { return {}; }
-    }
-    function saveQuantities(q) {
-      localStorage.setItem('inventoryQuantities', JSON.stringify(q));
-    }
+    // Local storage keys
+    const LS_QTY = 'inv.quantities';
+    const LS_IDX = 'inv.index';
 
     // State
     let items = [];
     let currentIndex = 0;
     let quantities = loadQuantities();
 
-    function updateProgress() {
-      const p = (currentIndex / items.length) * 100;
-      document.getElementById('progressBar').style.width = p + '%';
-      document.getElementById('footer').textContent =
-        items.length ? `آیتم ${currentIndex+1} از ${items.length}` : '';
+    // Elements
+    const detailsEl = document.getElementById('details');
+    const qtyInput = document.getElementById('qtyInput');
+    const saveBtn = document.getElementById('saveBtn');
+    const metaText = document.getElementById('metaText');
+    const progressText = document.getElementById('progressText');
+    const progressBar = document.getElementById('progressBar');
+    const errBox = document.getElementById('errorBox');
+    const img = document.getElementById('image');
+    const placeholder = document.getElementById('placeholder');
+
+    // Load quantities from local storage
+    function loadQuantities() {
+      try { return JSON.parse(localStorage.getItem(LS_QTY) || '{}'); } catch { return {}; }
+    }
+    // Save quantities to local storage
+    function saveQuantities() {
+      localStorage.setItem(LS_QTY, JSON.stringify(quantities));
     }
 
+    // Format numbers according to English locale
+    function fmtNumber(n) {
+      return Intl.NumberFormat('en-CA').format(n);
+    }
+
+    // Display the current item in the UI
     function showItem(i) {
-      const elDetails = document.getElementById('details');
-      const img = document.getElementById('productImage');
-      if (!items.length) {
-        elDetails.innerHTML = '<p style="margin:1rem">آیتمی یافت نشد.</p>';
-        img.src = './icon-512.png';
-        document.getElementById('saveBtn').disabled = true;
+      if (!items.length) return;
+      const it = items[i];
+
+      // Build details list in English
+      detailsEl.innerHTML = `
+        <dt>Name:</dt><dd>${it.name || '-'}</dd>
+        <dt>Category:</dt><dd>${it.category || '-'}</dd>
+        <dt>Unit:</dt><dd>${it.unit || '-'}</dd>
+        <dt>Min / Target:</dt><dd>${fmtNumber(it.par || 0)} / ${fmtNumber(it.reorderTo || 0)}</dd>
+        <dt>Supplier:</dt><dd>${it.supplier || '-'}</dd>
+        <dt>Notes:</dt><dd>${it.notes || '-'}</dd>
+      `;
+
+      // Handle image or placeholder
+      if (it.image) {
+        img.src = it.image;
+        img.hidden = false;
+        placeholder.hidden = true;
+      } else {
+        img.hidden = true;
+        placeholder.hidden = false;
+      }
+
+      // Pre-fill quantity input with stored value
+      const saved = quantities[it.id] ?? '';
+      qtyInput.value = saved === '' ? '' : String(saved);
+
+      // Update progress display
+      progressText.textContent = `Item ${i + 1} of ${items.length}`;
+      metaText.textContent = `ID: ${it.id}`;
+      progressBar.style.width = `${((i + 1) / items.length) * 100}%`;
+    }
+
+    // Advance to the next item (wrap-around)
+    function next() {
+      currentIndex = (currentIndex + 1) % items.length;
+      localStorage.setItem(LS_IDX, String(currentIndex));
+      showItem(currentIndex);
+    }
+
+    // Handle save & next button click
+    saveBtn.addEventListener('click', () => {
+      errBox.hidden = true;
+      if (!items.length) return;
+      const it = items[currentIndex];
+
+      const v = qtyInput.value.trim();
+      if (v === '' || isNaN(v) || Number(v) < 0) {
+        errBox.hidden = false;
+        errBox.textContent = 'Please enter a non-negative number.';
+        qtyInput.focus();
         return;
       }
-      const item = items[i];
-      img.src = item.image ? item.image : './icon-512.png';
-      img.onerror = () => { img.src = './icon-512.png'; };
-
-      elDetails.innerHTML =
-        `<strong>نام:</strong> ${item.name || '-'}<br>` +
-        `<strong>دسته:</strong> ${item.category || '-'}<br>` +
-        `<strong>واحد:</strong> ${item.unit || '-'}<br>` +
-        `<strong>کمینه/بهینه:</strong> ${(item.par ?? 0)} / ${(item.reorderTo ?? 0)}<br>` +
-        (item.brand ? `<strong>برند:</strong> ${item.brand}<br>` : '') +
-        (item.supplier ? `<strong>تامین‌کننده:</strong> ${item.supplier}<br>` : '') +
-        (item.notes ? `<strong>یادداشت:</strong> ${item.notes}<br>` : '');
-
-      const qInput = document.getElementById('qtyInput');
-      qInput.value = (quantities[item.id] ?? '');
-      updateProgress();
-    }
-
-    // Save & next
-    document.getElementById('saveBtn').addEventListener('click', () => {
-      if (!items.length) return;
-      const item = items[currentIndex];
-      const v = Number(document.getElementById('qtyInput').value || 0);
-      quantities[item.id] = isFinite(v) ? v : 0;
-      saveQuantities(quantities);
-      toast('ثبت شد');
-
-      currentIndex = (currentIndex + 1);
-      if (currentIndex >= items.length) currentIndex = 0;
-      showItem(currentIndex);
+      quantities[it.id] = Number(v);
+      saveQuantities();
+      next();
     });
 
-    // Define a version for data.json. Bump this string whenever you update
-    // the inventory list so that browsers fetch the latest file instead of
-    // serving a stale cached copy. The service worker's CACHE_NAME should
-    // be updated to match this version (see sw.js).
-    const DATA_VERSION = 'v5';
-
-    // Load data with cache busting and network-first fetch.  We append
-    // `ver=DATA_VERSION` to the data.json request and disable the browser
-    // cache so that the latest version is always retrieved.  If the network
-    // fails, the service worker will supply a cached copy.
+    // Fetch data.json (network-first) and populate items
     fetch(new URL(`./data.json?ver=${DATA_VERSION}`, location.href), { cache: 'no-store' })
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(data => {
         items = Array.isArray(data) ? data : [];
-        currentIndex = 0;
+        if (!items.length) throw new Error('No items in data.json');
+        const savedIndex = Number(localStorage.getItem(LS_IDX) || 0);
+        currentIndex = isNaN(savedIndex) ? 0 : Math.max(0, Math.min(savedIndex, items.length - 1));
         showItem(currentIndex);
       })
       .catch(err => {
-        document.getElementById('details').innerHTML =
-          `<p style="padding:1rem">خطا در بارگذاری داده‌ها: ${err.message}</p>`;
-        document.getElementById('saveBtn').disabled = true;
+        saveBtn.disabled = true;
+        errBox.hidden = false;
+        errBox.textContent = 'Failed to load data: ' + err.message;
       });
 
-    // Register SW with limited scope to avoid hijacking other pages
+    // Register service worker with local scope to avoid hijacking other pages
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(()=>{});
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => {});
+      });
     }
   </script>
 </body>
