@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>‏۵S Inventory – ثبت موجودی</title>
+  <!-- این مانیفست برای تبدیل سایت به اپلیکیشن PWA استفاده می‌شود. -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <style>
+    /* حداقل استایل برای صفحهٔ شمارش موجودی به سبک کارت */
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f5f5f5;
+      direction: rtl;
+      text-align: center;
+    }
+    header {
+      background: #2a7ae2;
+      color: white;
+      padding: 1rem;
+      font-size: 1.6rem;
+    }
+    #card {
+      background: white;
+      margin: 1rem auto;
+      padding: 1rem;
+      width: 90%;
+      max-width: 500px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    #card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 4px;
+      background: #ddd;
+    }
+    #details {
+      text-align: right;
+      margin-top: 1rem;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    #qtyInput {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      font-size: 1rem;
+    }
+    #saveBtn {
+      width: 100%;
+      padding: 0.6rem;
+      margin-top: 0.8rem;
+      background: #2a7ae2;
+      color: white;
+      border: none;
+      font-size: 1.1rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #progress {
+      width: 90%;
+      max-width: 500px;
+      margin: 1rem auto;
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    #progressBar {
+      height: 100%;
+      background: #2a7ae2;
+      width: 0;
+    }
+  </style>
+</head>
+<body>
+  <header>‏۵S Inventory</header>
+  <div id="progress">
+    <div id="progressBar"></div>
+  </div>
+  <div id="card">
+    <!-- تصویر محصول -->
+    <img id="productImage" src="icon-512.png" alt="تصویر محصول">
+    <div id="details"></div>
+    <input type="number" id="qtyInput" placeholder="موجودی را وارد کنید" step="any">
+    <button id="saveBtn">ذخیره و بعدی</button>
+  </div>
+  <script>
+    // بارگذاری داده‌ها از data.json
+    let items = [];
+    let currentIndex = 0;
+    // تلاش برای بارگذاری مقادیر ثبت شده در localStorage
+    function loadQuantities() {
+      const stored = localStorage.getItem('inventoryQuantities');
+      return stored ? JSON.parse(stored) : {};
+    }
+    function saveQuantities(data) {
+      localStorage.setItem('inventoryQuantities', JSON.stringify(data));
+    }
+    const quantities = loadQuantities();
+
+    function updateProgress() {
+      const progressBar = document.getElementById('progressBar');
+      const percent = items.length ? ((currentIndex) / items.length) * 100 : 0;
+      progressBar.style.width = percent + '%';
+    }
+    function showItem(index) {
+      if (index >= items.length) {
+        document.getElementById('card').innerHTML = '<h3>تمام موارد ثبت شد!</h3><p>از همکاری شما سپاس‌گزاریم.</p>';
+        updateProgress();
+        return;
+      }
+      const item = items[index];
+      // استفاده از تصویر اگر موجود است، در غیر این صورت آیکون پیش‌فرض
+      document.getElementById('productImage').src = item.image || 'icon-512.png';
+      const detailsEl = document.getElementById('details');
+      detailsEl.innerHTML =
+        '<strong>نام: </strong>' + item.name + '<br>' +
+        (item.brand ? '<strong>برند: </strong>' + item.brand + '<br>' : '') +
+        '<strong>دسته: </strong>' + (item.category || '') + '<br>' +
+        '<strong>واحد: </strong>' + (item.unit || '') + '<br>' +
+        '<strong>کمینه/بیشینه: </strong>' + (item.par || 0) + ' / ' + (item.reorderTo || 0) + '<br>' +
+        (item.unitCost ? '<strong>قیمت واحد: </strong>' + item.unitCost + '<br>' : '') +
+        (item.supplier ? '<strong>تأمین‌کننده: </strong>' + item.supplier + '<br>' : '') +
+        (item.notes ? '<strong>توضیحات: </strong>' + item.notes + '<br>' : '');
+      const qtyInput = document.getElementById('qtyInput');
+      qtyInput.value = quantities[item.id] !== undefined ? quantities[item.id] : '';
+      updateProgress();
+    }
+    document.getElementById('saveBtn').addEventListener('click', function() {
+      if (currentIndex >= items.length) return;
+      const item = items[currentIndex];
+      const qtyVal = parseFloat(document.getElementById('qtyInput').value) || 0;
+      quantities[item.id] = qtyVal;
+      saveQuantities(quantities);
+      currentIndex++;
+      showItem(currentIndex);
+    });
+    // بارگذاری فایل JSON
+    fetch('data.json')
+      .then(resp => resp.json())
+      .then(data => {
+        items = data;
+        showItem(currentIndex);
+      })
+      .catch(err => {
+        document.getElementById('card').innerHTML = '<p>خطا در بارگذاری داده‌ها</p>';
+      });
+    // ثبت سرویس ورکر برای PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>
