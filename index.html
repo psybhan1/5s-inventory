@@ -85,7 +85,7 @@
       const elDetails = document.getElementById('details');
       const img = document.getElementById('productImage');
       if (!items.length) {
-        elDetails.innerHTML = '<p style="margin:1rem">آیتمی نیافت نشد.</p>';
+        elDetails.innerHTML = '<p style="margin:1rem">آیتمی یافت نشد.</p>';
         img.src = './icon-512.png';
         document.getElementById('saveBtn').disabled = true;
         return;
@@ -98,7 +98,7 @@
         `<strong>نام:</strong> ${item.name || '-'}<br>` +
         `<strong>دسته:</strong> ${item.category || '-'}<br>` +
         `<strong>واحد:</strong> ${item.unit || '-'}<br>` +
-        `<strong>کمینه/ بهینه:</strong> ${(item.par ?? 0)} / ${(item.reorderTo ?? 0)}<br>` +
+        `<strong>کمینه/بهینه:</strong> ${(item.par ?? 0)} / ${(item.reorderTo ?? 0)}<br>` +
         (item.brand ? `<strong>برند:</strong> ${item.brand}<br>` : '') +
         (item.supplier ? `<strong>تامین‌کننده:</strong> ${item.supplier}<br>` : '') +
         (item.notes ? `<strong>یادداشت:</strong> ${item.notes}<br>` : '');
@@ -122,8 +122,17 @@
       showItem(currentIndex);
     });
 
-    // Load data
-    fetch(new URL('./data.json', location.href))
+    // Define a version for data.json. Bump this string whenever you update
+    // the inventory list so that browsers fetch the latest file instead of
+    // serving a stale cached copy. The service worker's CACHE_NAME should
+    // be updated to match this version (see sw.js).
+    const DATA_VERSION = 'v5';
+
+    // Load data with cache busting and network-first fetch.  We append
+    // `ver=DATA_VERSION` to the data.json request and disable the browser
+    // cache so that the latest version is always retrieved.  If the network
+    // fails, the service worker will supply a cached copy.
+    fetch(new URL(`./data.json?ver=${DATA_VERSION}`, location.href), { cache: 'no-store' })
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(data => {
         items = Array.isArray(data) ? data : [];
@@ -136,7 +145,7 @@
         document.getElementById('saveBtn').disabled = true;
       });
 
-    // Register SW with *limited scope* to avoid hijacking other pages
+    // Register SW with limited scope to avoid hijacking other pages
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(()=>{});
     }
